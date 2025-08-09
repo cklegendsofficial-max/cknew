@@ -1,0 +1,5 @@
+MUSIC PLACEHOLDER
+
+Script: Heroic Leaders of the Past
+
+Please generate music manually or install music generation dependencies.

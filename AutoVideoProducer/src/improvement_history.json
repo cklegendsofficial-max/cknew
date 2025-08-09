@@ -1,0 +1,15 @@
+[
+  {
+    "file_path": "C:\\CKEmpire\\AutoVideoProducer\\src\\video_editor_example.py",
+    "timestamp": "2025-08-06T16:17:16.300312",
+    "metrics_before": {
+      "function_count": 8,
+      "class_count": 0,
+      "import_count": 6,
+      "complexity_score": 4,
+      "average_complexity": 0.5
+    },
+    "opportunities_found": 7,
+    "suggestions": ""
+  }
+]

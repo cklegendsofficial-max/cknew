@@ -1,0 +1,5 @@
+MUSIC PLACEHOLDER
+
+Script: Racing Legends
+
+Please generate music manually or install music generation dependencies.

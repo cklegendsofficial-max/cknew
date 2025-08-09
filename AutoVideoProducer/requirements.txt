@@ -1,0 +1,59 @@
+# Core AI and ML libraries
+ollama>=0.1.0
+torch>=2.0.0
+transformers>=4.30.0
+
+# Stable Diffusion for visual generation
+diffusers>=0.21.0
+accelerate>=0.20.0
+
+# Music generation
+music21>=8.1.0
+audiocraft>=1.0.0
+midiutil>=1.2.1
+
+# Video and audio processing
+moviepy>=1.0.3
+pydub>=0.25.1
+gtts>=2.3.2
+
+# Image processing
+pillow>=9.5.0
+
+# Web scraping and HTTP
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+
+# GUI and automation
+pyautogui>=0.9.54
+
+# Code analysis and self-improvement
+javalang>=0.13.0  # For Java code parsing
+
+# Additional utilities
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+
+# For executable creation
+pyinstaller>=5.13.0
+
+# Optional: For advanced video processing
+opencv-python>=4.8.0
+ffmpeg-python>=0.2.0
+
+# Optional: For better audio processing
+librosa>=0.10.0
+soundfile>=0.12.0
+
+# For subtitle translation
+deep-translator>=1.11.0
+
+# Scheduling and automation
+schedule>=1.2.0  # For daily scheduling
+
+# File System Monitoring
+watchdog>=3.0.0
+
+# System Monitoring
+psutil>=5.9.0

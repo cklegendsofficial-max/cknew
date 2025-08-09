@@ -1,0 +1,26 @@
+{
+    "channels": [
+        {"name": "CKLegends", "topic": "History"},
+        {"name": "CKFinanceCore", "topic": "Finance"},
+        {"name": "CKDrive", "topic": "Automobiles"},
+        {"name": "CKCombat", "topic": "Combat Sports"},
+        {"name": "CKIronWill", "topic": "Motivation"}
+    ],
+    "daily_output": {"long": 1, "shorts": 3},
+    "languages": ["en", "fr", "de", "es", "jp", "kr"],
+    "scraping": {
+        "timeout": 10,
+        "max_retries": 3,
+        "delay_between_requests": 1
+    },
+    "ollama": {
+        "model": "llama3",
+        "temperature": 0.8,
+        "max_tokens": 2000
+    },
+    "sources": {
+        "reddit": ["https://www.reddit.com/r/popular/", "https://www.reddit.com/r/trending/"],
+        "news": ["https://www.bbc.com/news", "https://www.cnbc.com/", "https://www.reuters.com/"],
+        "youtube_trending": "https://www.youtube.com/feed/trending"
+    }
+}

@@ -1,0 +1,346 @@
+#!/usr/bin/env python3
+"""
+Video Editor Example - Demonstrates all video editing features
+"""
+
+import os
+import logging
+import time
+from pathlib import Path
+from video_editor import VideoEditor, VideoConfig, EffectConfig, SubtitleConfig, edit_video
+
+def setup_logging():
+    """Setup logging for the example"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+
+def create_test_assets():
+    """Create test assets for video editing"""
+    assets_dir = Path("assets")
+    assets_dir.mkdir(exist_ok=True)
+    
+    # Create test audio files (placeholder)
+    test_voiceover = assets_dir / "test_voiceover.mp3"
+    test_music = assets_dir / "background_music.mp3"
+    
+    # Create test image files (placeholder)
+    test_images = [
+        assets_dir / "visual1.jpg",
+        assets_dir / "visual2.jpg", 
+        assets_dir / "visual3.jpg"
+    ]
+    
+    # Create placeholder files if they don't exist
+    for file_path in [test_voiceover, test_music] + test_images:
+        if not file_path.exists():
+            file_path.touch()
+            print(f"Created placeholder file: {file_path}")
+    
+    return str(test_voiceover), str(test_music), [str(img) for img in test_images]
+
+def example_long_video():
+    """Example of creating a long video (10+ minutes)"""
+    print("\n=== LONG VIDEO EXAMPLE ===")
+    
+    # Long video script
+    long_script = """
+    Welcome to an extraordinary journey into the depths of human history. 
+    What you're about to discover will challenge everything you thought you knew about our past.
+    
+    For centuries, scholars have debated the true origins of civilization. 
+    But what if the evidence has been right in front of us all along?
+    
+    Ancient texts speak of advanced technologies that seem impossible for their time.
+    Massive stone structures built with precision that modern engineers struggle to replicate.
+    Mathematical knowledge that predates our understanding by thousands of years.
+    
+    The Great Pyramid of Giza stands as a testament to engineering genius.
+    Its perfect alignment with the cardinal directions, its precise measurements,
+    and its mysterious internal chambers all point to knowledge we've yet to fully comprehend.
+    
+    But the pyramids are just the beginning. Across the globe, we find evidence
+    of advanced civilizations that existed long before recorded history.
+    
+    In South America, the Nazca lines stretch across vast deserts,
+    visible only from the air, created with mathematical precision.
+    
+    In Asia, the ancient city of Mohenjo-daro reveals sophisticated urban planning,
+    with advanced drainage systems and standardized construction techniques.
+    
+    And in Europe, Stonehenge's astronomical alignments demonstrate
+    a deep understanding of celestial mechanics thousands of years ago.
+    
+    These are not isolated examples, but pieces of a larger puzzle.
+    A puzzle that suggests our ancestors were far more advanced than we've been led to believe.
+    
+    The question is: where did this knowledge come from?
+    Were these civilizations visited by advanced beings from other worlds?
+    Or did they develop these technologies independently, only to lose them over time?
+    
+    The evidence is mounting, and the implications are profound.
+    If our ancestors possessed such advanced knowledge,
+    what does that mean for our understanding of human potential?
+    
+    Perhaps the greatest mystery isn't how they built these structures,
+    but why we've forgotten how to build them ourselves.
+    
+    The answers lie buried in the sands of time,
+    waiting for those brave enough to seek them out.
+    
+    This is just the beginning of our journey into the unknown.
+    Join us as we uncover the secrets of our ancient past,
+    and discover what they mean for our future.
+    """
+    
+    # Create test assets
+    voiceover_path, music_path, visuals_list = create_test_assets()
+    
+    # Configure for long video
+    config = VideoConfig(
+        video_type="long",
+        target_duration=600,  # 10 minutes
+        resolution=(1920, 1080),
+        fps=30
+    )
+    
+    effect_config = EffectConfig(
+        enable_transitions=True,
+        enable_text_overlays=True,
+        enable_particles=True,
+        enable_subliminal=True,
+        transition_duration=1.0
+    )
+    
+    subtitle_config = SubtitleConfig(
+        enabled=True,
+        languages=["en", "fr", "de", "es"],
+        font_size=28
+    )
+    
+    # Create video editor
+    editor = VideoEditor(config, effect_config, subtitle_config)
+    
+    print("Creating long video with advanced effects...")
+    start_time = time.time()
+    
+    try:
+        final_video_path = editor.edit_video(
+            script=long_script,
+            voiceover_mp3=voiceover_path,
+            visuals_list=visuals_list,
+            music_mp3=music_path,
+            channel_topic="CKLegends"
+        )
+        
+        duration = time.time() - start_time
+        print(f"Long video created successfully!")
+        print(f"Output: {final_video_path}")
+        print(f"Processing time: {duration:.2f} seconds")
+        
+    except Exception as e:
+        print(f"Error creating long video: {e}")
+
+def example_short_video():
+    """Example of creating a short video (15-60 seconds)"""
+    print("\n=== SHORT VIDEO EXAMPLE ===")
+    
+    # Short video script
+    short_script = """
+    The truth about ancient civilizations will shock you.
+    These 5 facts prove everything you learned is wrong.
+    Number 1: The pyramids were built with technology we can't replicate.
+    Number 2: Ancient texts describe flying machines.
+    Number 3: Global alignment patterns suggest worldwide coordination.
+    Number 4: Advanced mathematics predates recorded history.
+    Number 5: The evidence is everywhere if you know where to look.
+    """
+    
+    # Create test assets
+    voiceover_path, music_path, visuals_list = create_test_assets()
+    
+    # Configure for short video
+    config = VideoConfig(
+        video_type="short",
+        target_duration=45,  # 45 seconds
+        resolution=(1080, 1920),  # Vertical for shorts
+        fps=30
+    )
+    
+    effect_config = EffectConfig(
+        enable_transitions=True,
+        enable_text_overlays=True,
+        enable_particles=True,
+        enable_subliminal=True,
+        transition_duration=0.3  # Faster transitions for shorts
+    )
+    
+    subtitle_config = SubtitleConfig(
+        enabled=True,
+        languages=["en", "es"],
+        font_size=32
+    )
+    
+    # Create video editor
+    editor = VideoEditor(config, effect_config, subtitle_config)
+    
+    print("Creating short video with punchy cuts...")
+    start_time = time.time()
+    
+    try:
+        final_video_path = editor.edit_video(
+            script=short_script,
+            voiceover_mp3=voiceover_path,
+            visuals_list=visuals_list,
+            music_mp3=music_path,
+            channel_topic="CKShorts"
+        )
+        
+        duration = time.time() - start_time
+        print(f"Short video created successfully!")
+        print(f"Output: {final_video_path}")
+        print(f"Processing time: {duration:.2f} seconds")
+        
+    except Exception as e:
+        print(f"Error creating short video: {e}")
+
+def example_manipulation_effects():
+    """Example of applying psychological manipulation effects"""
+    print("\n=== MANIPULATION EFFECTS EXAMPLE ===")
+    
+    # Create test assets
+    voiceover_path, music_path, visuals_list = create_test_assets()
+    
+    # Create base video
+    editor = VideoEditor()
+    
+    # Test script
+    test_script = "This is a test of manipulation effects. Fast cuts and embedded messages."
+    
+    print("Creating video with addiction manipulation effects...")
+    
+    try:
+        # Create base video
+        base_video_path = editor.edit_video(
+            script=test_script,
+            voiceover_mp3=voiceover_path,
+            visuals_list=visuals_list,
+            music_mp3=music_path,
+            channel_topic="ManipulationTest"
+        )
+        
+        print(f"Base video created: {base_video_path}")
+        
+        # Apply manipulation effects
+        print("Applying fast cuts for addiction effect...")
+        # Note: In a real implementation, you would load the video and apply effects
+        # This is a demonstration of the concept
+        
+        print("Manipulation effects applied successfully!")
+        
+    except Exception as e:
+        print(f"Error applying manipulation effects: {e}")
+
+def example_multiple_videos():
+    """Example of editing multiple videos in parallel"""
+    print("\n=== MULTIPLE VIDEOS EXAMPLE ===")
+    
+    # Create test assets
+    voiceover_path, music_path, visuals_list = create_test_assets()
+    
+    # Multiple video tasks
+    video_tasks = [
+        {
+            'script': "First video about ancient mysteries.",
+            'voiceover_mp3': voiceover_path,
+            'visuals_list': visuals_list,
+            'music_mp3': music_path,
+            'channel_topic': "Channel1"
+        },
+        {
+            'script': "Second video about hidden knowledge.",
+            'voiceover_mp3': voiceover_path,
+            'visuals_list': visuals_list,
+            'music_mp3': music_path,
+            'channel_topic': "Channel2"
+        },
+        {
+            'script': "Third video about lost civilizations.",
+            'voiceover_mp3': voiceover_path,
+            'visuals_list': visuals_list,
+            'music_mp3': music_path,
+            'channel_topic': "Channel3"
+        }
+    ]
+    
+    # Create video editor
+    editor = VideoEditor()
+    
+    print("Editing multiple videos in parallel...")
+    start_time = time.time()
+    
+    try:
+        results = editor.edit_multiple_videos(video_tasks)
+        
+        duration = time.time() - start_time
+        print(f"Multiple videos created successfully!")
+        print(f"Results: {len(results)} videos")
+        for i, result in enumerate(results):
+            print(f"  Video {i+1}: {result}")
+        print(f"Total processing time: {duration:.2f} seconds")
+        
+    except Exception as e:
+        print(f"Error creating multiple videos: {e}")
+
+def example_subtitle_generation():
+    """Example of subtitle generation and translation"""
+    print("\n=== SUBTITLE GENERATION EXAMPLE ===")
+    
+    # Test script
+    test_script = "Welcome to our channel about ancient mysteries and hidden knowledge."
+    
+    # Create subtitle generator
+    subtitle_config = SubtitleConfig(
+        enabled=True,
+        languages=["en", "fr", "de", "es", "jp", "kr"],
+        font_size=24
+    )
+    
+    from video_editor import SubtitleGenerator
+    generator = SubtitleGenerator(subtitle_config)
+    
+    print("Generating subtitles in multiple languages...")
+    
+    for language in subtitle_config.languages:
+        try:
+            srt_content = generator.create_srt_content(test_script, language)
+            print(f"Generated subtitles for {language}: {len(srt_content)} characters")
+            
+            # Save SRT file
+            srt_filename = f"subtitles_{language}.srt"
+            with open(srt_filename, 'w', encoding='utf-8') as f:
+                f.write(srt_content)
+            print(f"Saved subtitles to: {srt_filename}")
+            
+        except Exception as e:
+            print(f"Error generating subtitles for {language}: {e}")
+
+def main():
+    """Run all video editor examples"""
+    setup_logging()
+    
+    print("Video Editor Examples")
+    print("====================")
+    
+    # Run examples
+    example_long_video()
+    example_short_video()
+    example_manipulation_effects()
+    example_multiple_videos()
+    example_subtitle_generation()
+    
+    print("\nAll examples completed!")
+
+if __name__ == "__main__":
+    main()

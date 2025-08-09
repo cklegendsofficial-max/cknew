@@ -1,0 +1,705 @@
+#!/usr/bin/env python3
+"""
+AutoVideoProducer - Main Application
+Automated video production system with AI integration
+"""
+
+import os
+import sys
+import json
+import logging
+import threading
+import tkinter as tk
+from tkinter import ttk, scrolledtext, messagebox
+import subprocess
+import requests
+import time
+import random
+from datetime import datetime
+
+# Required libraries (install with: pip install ollama moviepy requests beautifulsoup4 pyautogui torch pydub pillow gtts music21)
+# import ollama
+# import moviepy.editor as mp
+# import requests
+# from bs4 import BeautifulSoup
+# import pyautogui
+# import torch
+# from pydub import AudioSegment
+# from PIL import Image
+# from gtts import gTTS
+# import music21
+# import ast
+
+class AutoVideoProducer:
+    def __init__(self):
+        self.config = None
+        self.ollama_client = None
+        self.root = None
+        self.log_text = None
+        self.setup_logging()
+        
+    def setup_logging(self):
+        """Setup logging to both file and GUI"""
+        log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+        log_file = os.path.join(log_dir, f'autovideoproducer_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+        
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler(log_file),
+                logging.StreamHandler(sys.stdout)
+            ]
+        )
+        self.logger = logging.getLogger(__name__)
+        
+    def load_config(self):
+        """Load configuration from config.json"""
+        try:
+            config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'config.json')
+            with open(config_path, 'r', encoding='utf-8') as f:
+                self.config = json.load(f)
+            self.logger.info("Configuration loaded successfully")
+            return True
+        except FileNotFoundError:
+            self.logger.error(f"Configuration file not found: {config_path}")
+            return False
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Invalid JSON in config file: {e}")
+            return False
+        except Exception as e:
+            self.logger.error(f"Error loading config: {e}")
+            return False
+            
+    def setup_ollama(self):
+        """Setup Ollama and download llama3 if not present"""
+        try:
+            # Check if Ollama is installed
+            result = subprocess.run(['ollama', '--version'], capture_output=True, text=True)
+            if result.returncode != 0:
+                self.logger.error("Ollama not found. Please install Ollama first.")
+                return False
+                
+            # Check if llama3 model is available
+            result = subprocess.run(['ollama', 'list'], capture_output=True, text=True)
+            if 'llama3' not in result.stdout:
+                self.logger.info("Downloading llama3 model...")
+                subprocess.run(['ollama', 'pull', 'llama3'], check=True)
+                self.logger.info("llama3 model downloaded successfully")
+            else:
+                self.logger.info("llama3 model already available")
+                
+            return True
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Error setting up Ollama: {e}")
+            return False
+        except Exception as e:
+            self.logger.error(f"Unexpected error setting up Ollama: {e}")
+            return False
+            
+    def create_gui(self):
+        """Create the main GUI window"""
+        try:
+            self.root = tk.Tk()
+            self.root.title("AutoVideoProducer - CK Empire")
+            self.root.geometry("800x600")
+            self.root.configure(bg='#2b2b2b')
+            
+            # Configure style
+            style = ttk.Style()
+            style.theme_use('clam')
+            style.configure('TFrame', background='#2b2b2b')
+            style.configure('TButton', background='#4a4a4a', foreground='white')
+            
+            # Main frame
+            main_frame = ttk.Frame(self.root)
+            main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            # Title
+            title_label = tk.Label(
+                main_frame, 
+                text="AutoVideoProducer", 
+                font=("Arial", 16, "bold"),
+                fg='white',
+                bg='#2b2b2b'
+            )
+            title_label.pack(pady=(0, 20))
+            
+            # Status frame
+            status_frame = ttk.Frame(main_frame)
+            status_frame.pack(fill=tk.X, pady=(0, 10))
+            
+            # Status label
+            self.status_label = tk.Label(
+                status_frame,
+                text="Initializing...",
+                font=("Arial", 10),
+                fg='yellow',
+                bg='#2b2b2b'
+            )
+            self.status_label.pack(side=tk.LEFT)
+            
+            # Progress bar
+            self.progress = ttk.Progressbar(status_frame, mode='indeterminate')
+            self.progress.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(10, 0))
+            
+            # Log frame
+            log_frame = ttk.Frame(main_frame)
+            log_frame.pack(fill=tk.BOTH, expand=True)
+            
+            # Log label
+            log_label = tk.Label(
+                log_frame,
+                text="System Logs:",
+                font=("Arial", 10, "bold"),
+                fg='white',
+                bg='#2b2b2b'
+            )
+            log_label.pack(anchor=tk.W, pady=(0, 5))
+            
+            # Log text area
+            self.log_text = scrolledtext.ScrolledText(
+                log_frame,
+                height=20,
+                bg='#1e1e1e',
+                fg='#00ff00',
+                font=("Consolas", 9),
+                insertbackground='white'
+            )
+            self.log_text.pack(fill=tk.BOTH, expand=True)
+            
+            # Control buttons frame
+            button_frame = ttk.Frame(main_frame)
+            button_frame.pack(fill=tk.X, pady=(10, 0))
+            
+            # Start button
+            self.start_button = tk.Button(
+                button_frame,
+                text="Start Production",
+                command=self.start_production,
+                bg='#4CAF50',
+                fg='white',
+                font=("Arial", 10, "bold"),
+                relief=tk.FLAT,
+                padx=20,
+                pady=5
+            )
+            self.start_button.pack(side=tk.LEFT, padx=(0, 10))
+            
+            # Stop button
+            self.stop_button = tk.Button(
+                button_frame,
+                text="Stop",
+                command=self.stop_production,
+                bg='#f44336',
+                fg='white',
+                font=("Arial", 10, "bold"),
+                relief=tk.FLAT,
+                padx=20,
+                pady=5,
+                state=tk.DISABLED
+            )
+            self.stop_button.pack(side=tk.LEFT)
+            
+            # Clear logs button
+            clear_button = tk.Button(
+                button_frame,
+                text="Clear Logs",
+                command=self.clear_logs,
+                bg='#2196F3',
+                fg='white',
+                font=("Arial", 10),
+                relief=tk.FLAT,
+                padx=20,
+                pady=5
+            )
+            clear_button.pack(side=tk.RIGHT)
+            
+            # Self-improvement button
+            self.improve_button = tk.Button(
+                button_frame,
+                text="Self-Improve",
+                command=self.manual_self_improvement,
+                bg='#FF9800',
+                fg='white',
+                font=("Arial", 10),
+                relief=tk.FLAT,
+                padx=20,
+                pady=5
+            )
+            self.improve_button.pack(side=tk.RIGHT, padx=(10, 0))
+            
+            return True
+        except Exception as e:
+            self.logger.error(f"Error creating GUI: {e}")
+            return False
+            
+    def log_to_gui(self, message):
+        """Log message to GUI text area"""
+        try:
+            if self.log_text:
+                timestamp = datetime.now().strftime("%H:%M:%S")
+                formatted_message = f"[{timestamp}] {message}\n"
+                self.log_text.insert(tk.END, formatted_message)
+                self.log_text.see(tk.END)
+                self.root.update_idletasks()
+        except Exception as e:
+            print(f"Error logging to GUI: {e}")
+            
+    def update_status(self, message, color='yellow'):
+        """Update status label"""
+        try:
+            if self.status_label:
+                self.status_label.config(text=message, fg=color)
+                self.root.update_idletasks()
+        except Exception as e:
+            print(f"Error updating status: {e}")
+            
+    def start_production(self):
+        """Start the video production process"""
+        try:
+            self.start_button.config(state=tk.DISABLED)
+            self.stop_button.config(state=tk.NORMAL)
+            self.progress.start()
+            self.update_status("Production started", "green")
+            self.log_to_gui("Starting video production process...")
+            
+            # Start production in separate thread
+            self.production_thread = threading.Thread(target=self.production_worker)
+            self.production_thread.daemon = True
+            self.production_thread.start()
+            
+        except Exception as e:
+            self.logger.error(f"Error starting production: {e}")
+            self.log_to_gui(f"Error starting production: {e}")
+            
+    def stop_production(self):
+        """Stop the video production process"""
+        try:
+            self.start_button.config(state=tk.NORMAL)
+            self.stop_button.config(state=tk.DISABLED)
+            self.progress.stop()
+            self.update_status("Production stopped", "red")
+            self.log_to_gui("Production process stopped by user")
+        except Exception as e:
+            self.logger.error(f"Error stopping production: {e}")
+            
+    def clear_logs(self):
+        """Clear the log text area"""
+        try:
+            if self.log_text:
+                self.log_text.delete(1.0, tk.END)
+        except Exception as e:
+            self.logger.error(f"Error clearing logs: {e}")
+    
+    def manual_self_improvement(self):
+        """Manually trigger self-improvement"""
+        try:
+            self.improve_button.config(state=tk.DISABLED)
+            self.log_to_gui("Starting manual self-improvement...")
+            
+            # Start improvement in separate thread
+            improvement_thread = threading.Thread(target=self.improvement_worker)
+            improvement_thread.daemon = True
+            improvement_thread.start()
+            
+        except Exception as e:
+            self.logger.error(f"Error starting manual improvement: {e}")
+            self.log_to_gui(f"Error starting improvement: {e}")
+    
+    def improvement_worker(self):
+        """Worker thread for manual self-improvement"""
+        try:
+            # Import self-improver
+            from self_improver import SelfImprover
+            
+            self_improver = SelfImprover()
+            
+            # Get Python files in src directory
+            src_dir = os.path.dirname(__file__)
+            python_files = []
+            for root, dirs, files in os.walk(src_dir):
+                for file in files:
+                    if file.endswith('.py') and file != 'self_improver.py':
+                        python_files.append(os.path.join(root, file))
+            
+            if python_files:
+                # Select 2-3 random files to improve
+                files_to_improve = random.sample(python_files, min(3, len(python_files)))
+                
+                self.log_to_gui(f"Selected {len(files_to_improve)} files for improvement:")
+                for file_path in files_to_improve:
+                    self.log_to_gui(f"  - {os.path.basename(file_path)}")
+                
+                improved_count = 0
+                for file_path in files_to_improve:
+                    self.log_to_gui(f"Improving {os.path.basename(file_path)}...")
+                    if self_improver.improve_code(file_path):
+                        improved_count += 1
+                        self.log_to_gui(f"✓ Improved: {os.path.basename(file_path)}")
+                    else:
+                        self.log_to_gui(f"✗ Failed to improve: {os.path.basename(file_path)}")
+                
+                self.log_to_gui(f"Manual improvement completed: {improved_count}/{len(files_to_improve)} files improved")
+            else:
+                self.log_to_gui("No Python files found for improvement")
+                
+        except Exception as e:
+            self.logger.error(f"Error in improvement worker: {e}")
+            self.log_to_gui(f"Improvement error: {e}")
+        finally:
+            try:
+                self.root.after(0, lambda: self.improve_button.config(state=tk.NORMAL))
+            except:
+                pass
+            
+    def production_worker(self):
+        """Worker thread for video production"""
+        try:
+            self.log_to_gui("Initializing production pipeline...")
+            
+            # Import the new modules
+            try:
+                from content_idea_generator import ContentIdeaGenerator
+                from script_writer import ScriptWriter
+                from voiceover_generator import VoiceoverGenerator, VoiceoverSettings
+                from visual_generator import VisualGenerator
+                from music_generator import MusicGenerator
+                from video_editor import VideoEditor, edit_video
+                from self_improver import SelfImprover
+                from izleyici_analyzer import IzleyiciAnalyzer
+                self.log_to_gui("Modules imported successfully")
+            except ImportError as e:
+                self.log_to_gui(f"Failed to import modules: {e}")
+                return
+            
+            # Initialize modules
+            self.log_to_gui("Initializing content idea generator...")
+            idea_generator = ContentIdeaGenerator()
+            
+            self.log_to_gui("Initializing script writer...")
+            script_writer = ScriptWriter()
+            
+            self.log_to_gui("Initializing voiceover generator...")
+            voiceover_generator = VoiceoverGenerator()
+            
+            self.log_to_gui("Initializing visual generator...")
+            visual_generator = VisualGenerator()
+            
+            self.log_to_gui("Initializing music generator...")
+            music_generator = MusicGenerator()
+            
+            self.log_to_gui("Initializing video editor...")
+            video_editor = VideoEditor()
+            
+            # Initialize self-improvement and audience analysis
+            self.log_to_gui("Initializing self-improvement system...")
+            self_improver = SelfImprover()
+            
+            self.log_to_gui("Initializing audience analyzer...")
+            audience_analyzer = IzleyiciAnalyzer()
+            
+            # Production steps
+            steps = [
+                ("Loading channel configurations...", 1),
+                ("Generating content ideas...", 2),
+                ("Creating video scripts...", 3),
+                ("Generating audio narration...", 4),
+                ("Generating visual assets...", 5),
+                ("Generating background music...", 6),
+                ("Processing video footage...", 7),
+                ("Adding subtitles...", 8),
+                ("Rendering final videos...", 9),
+                ("Analyzing audience response...", 10),
+                ("Uploading to channels...", 11)
+            ]
+            
+            for i, (step, step_num) in enumerate(steps):
+                if not hasattr(self, 'production_thread') or not self.production_thread.is_alive():
+                    break
+                    
+                self.log_to_gui(f"Step {step_num}/11: {step}")
+                
+                # Execute actual production steps
+                if step_num == 2:  # Generating content ideas
+                    try:
+                        self.log_to_gui("Generating ideas for CKLegends channel...")
+                        ideas = idea_generator.generate_ideas("History")
+                        if ideas and 'long_video' in ideas:
+                            self.log_to_gui(f"Generated {len(ideas.get('long_video', []))} long video ideas")
+                            self.log_to_gui(f"Generated {len(ideas.get('shorts', []))} short video ideas")
+                        else:
+                            self.log_to_gui("No ideas generated, using fallback")
+                    except Exception as e:
+                        self.log_to_gui(f"Error generating ideas: {e}")
+                
+                elif step_num == 3:  # Creating video scripts
+                    try:
+                        self.log_to_gui("Generating video scripts...")
+                        # Create a test video idea
+                        test_idea = {
+                            "title": "The Hidden Truth About Ancient Civilizations",
+                            "script_outline": "Revealing mysterious advanced technologies",
+                            "duration": "15-20 minutes",
+                            "target_audience": "History enthusiasts",
+                            "hooks": ["What if everything you learned is wrong?"],
+                            "emotional_triggers": ["mystery", "wonder", "discovery"]
+                        }
+                        
+                        # Generate long video script
+                        long_script = script_writer.generate_script_with_improvement_loop(test_idea, 'long')
+                        self.log_to_gui(f"Long script generated: {long_script.total_words} words, Score: {long_script.addictiveness_score:.1f}/10")
+                        
+                        # Generate short video script
+                        short_script = script_writer.generate_script_with_improvement_loop(test_idea, 'short')
+                        self.log_to_gui(f"Short script generated: {short_script.total_words} words, Score: {short_script.addictiveness_score:.1f}/10")
+                        
+                        # Save scripts
+                        script_writer.save_script_to_file(long_script)
+                        script_writer.save_script_to_file(short_script)
+                        self.log_to_gui("Scripts saved successfully")
+                        
+                    except Exception as e:
+                        self.log_to_gui(f"Error generating scripts: {e}")
+                
+                elif step_num == 4:  # Generating audio narration
+                    try:
+                        self.log_to_gui("Generating voiceovers...")
+                        
+                        # Create voiceover settings
+                        settings = VoiceoverSettings(
+                            narrator_style="david_attenborough",
+                            language="en",
+                            slow=False
+                        )
+                        
+                        # Generate test voiceover
+                        test_text = "Welcome to an extraordinary journey into the unknown. What you're about to discover will challenge everything you thought you knew."
+                        result = voiceover_generator.generate_voiceover(test_text, settings)
+                        
+                        if result.audio_file_path:
+                            self.log_to_gui(f"Voiceover generated: {result.duration_seconds:.2f}s, Quality: {result.quality_score:.1f}/10")
+                        else:
+                            self.log_to_gui("Voiceover generation failed")
+                            
+                    except Exception as e:
+                        self.log_to_gui(f"Error generating voiceovers: {e}")
+                
+                elif step_num == 5:  # Generating visual assets
+                    try:
+                        self.log_to_gui("Generating visual assets...")
+                        
+                        # Use the script outline to generate visuals
+                        if 'long_script' in locals():
+                            script_outline = long_script.script_outline
+                        else:
+                            script_outline = "Ancient civilizations, epic landscapes, dramatic lighting, cinematic composition"
+                        
+                        visual_paths = visual_generator.generate_visuals(script_outline)
+                        
+                        if visual_paths:
+                            self.log_to_gui(f"Generated {len(visual_paths)} visual assets")
+                            for i, path in enumerate(visual_paths[:3]):  # Show first 3
+                                self.log_to_gui(f"  Visual {i+1}: {os.path.basename(path)}")
+                        else:
+                            self.log_to_gui("Visual generation failed")
+                            
+                    except Exception as e:
+                        self.log_to_gui(f"Error generating visuals: {e}")
+                
+                elif step_num == 6:  # Generating background music
+                    try:
+                        self.log_to_gui("Generating background music...")
+                        
+                        # Determine video type from script
+                        video_type = "history"  # Default for test
+                        if 'long_script' in locals() and hasattr(long_script, 'video_type'):
+                            video_type = long_script.video_type
+                        
+                        music_path = music_generator.generate_music(video_type)
+                        
+                        if music_path:
+                            self.log_to_gui(f"Generated background music: {os.path.basename(music_path)}")
+                            
+                            # Assess music quality
+                            quality = music_generator.assess_music_quality(music_path, video_type)
+                            self.log_to_gui(f"Music quality rating: {quality}/10")
+                        else:
+                            self.log_to_gui("Music generation failed")
+                            
+                    except Exception as e:
+                        self.log_to_gui(f"Error generating music: {e}")
+                
+                elif step_num == 7:  # Video editing
+                    try:
+                        self.log_to_gui("Editing video for CKLegends...")
+                        
+                        # Use generated assets for video editing
+                        if 'long_script' in locals() and 'visual_paths' in locals() and 'music_path' in locals():
+                            script_text = long_script.script_text
+                            voiceover_path = "assets/test_voiceover.mp3"  # Placeholder
+                            visuals_list = visual_paths if 'visual_paths' in locals() else []
+                            music_file = music_path if 'music_path' in locals() else "assets/background_music.mp3"
+                            
+                            # Edit video
+                            final_video_path = video_editor.edit_video(
+                                script=script_text,
+                                voiceover_mp3=voiceover_path,
+                                visuals_list=visuals_list,
+                                music_mp3=music_file,
+                                channel_topic="CKLegends"
+                            )
+                            
+                            if final_video_path:
+                                self.log_to_gui(f"Video editing completed: {os.path.basename(final_video_path)}")
+                                self.log_to_gui(f"Final video saved to: {final_video_path}")
+                            else:
+                                self.log_to_gui("Video editing failed")
+                        else:
+                            self.log_to_gui("Skipping video editing - missing assets")
+                            
+                    except Exception as e:
+                        self.log_to_gui(f"Error editing video: {e}")
+                
+                elif step_num == 10:  # Analyzing audience response
+                    try:
+                        self.log_to_gui("Analyzing audience response...")
+                        
+                        # Analyze the final video if it exists
+                        if 'final_video_path' in locals() and final_video_path:
+                            analysis_result = audience_analyzer.analyze_video(final_video_path)
+                            
+                            if 'error' not in analysis_result:
+                                metrics = analysis_result['metrics']
+                                feedback = analysis_result['feedback']
+                                
+                                self.log_to_gui(f"Audience Analysis Results:")
+                                self.log_to_gui(f"  Engagement: {metrics['engagement']:.2f}/1.0")
+                                self.log_to_gui(f"  Retention: {metrics['retention']:.2f}/1.0")
+                                self.log_to_gui(f"  Satisfaction: {metrics['satisfaction']:.2f}/1.0")
+                                self.log_to_gui(f"  Overall Score: {metrics['overall_score']:.2f}/1.0")
+                                
+                                # Log feedback
+                                for key, message in feedback.items():
+                                    if key != 'recommendations':
+                                        self.log_to_gui(f"  {key.title()}: {message}")
+                                
+                                # Log recommendations
+                                if 'recommendations' in feedback:
+                                    self.log_to_gui("  Recommendations:")
+                                    for rec in feedback['recommendations']:
+                                        self.log_to_gui(f"    - {rec}")
+                                
+                                # Feed feedback back to Ollama for next iteration
+                                self.log_to_gui("Feeding audience feedback to AI for next iteration...")
+                                
+                            else:
+                                self.log_to_gui(f"Audience analysis failed: {analysis_result['error']}")
+                        else:
+                            self.log_to_gui("No video available for audience analysis")
+                            
+                    except Exception as e:
+                        self.log_to_gui(f"Error in audience analysis: {e}")
+                
+                else:
+                    # Simulate other steps
+                    time.sleep(1)
+                
+            # Run self-improvement after production
+            try:
+                self.log_to_gui("Running self-improvement cycle...")
+                
+                # Get random modules to improve
+                src_dir = os.path.dirname(__file__)
+                python_files = []
+                for root, dirs, files in os.walk(src_dir):
+                    for file in files:
+                        if file.endswith('.py') and file != 'self_improver.py':
+                            python_files.append(os.path.join(root, file))
+                
+                if python_files:
+                    # Select 1-2 random files to improve
+                    files_to_improve = random.sample(python_files, min(2, len(python_files)))
+                    
+                    improved_count = 0
+                    for file_path in files_to_improve:
+                        if self_improver.improve_code(file_path):
+                            improved_count += 1
+                            self.log_to_gui(f"Improved: {os.path.basename(file_path)}")
+                    
+                    self.log_to_gui(f"Self-improvement completed: {improved_count}/{len(files_to_improve)} files improved")
+                else:
+                    self.log_to_gui("No Python files found for improvement")
+                    
+            except Exception as e:
+                self.log_to_gui(f"Error in self-improvement: {e}")
+            
+            self.log_to_gui("Production cycle completed successfully!")
+            self.update_status("Production completed", "green")
+            
+        except Exception as e:
+            self.logger.error(f"Error in production worker: {e}")
+            self.log_to_gui(f"Production error: {e}")
+        finally:
+            try:
+                self.root.after(0, lambda: self.start_button.config(state=tk.NORMAL))
+                self.root.after(0, lambda: self.stop_button.config(state=tk.DISABLED))
+                self.root.after(0, lambda: self.progress.stop())
+            except:
+                pass
+                
+    def initialize(self):
+        """Initialize the application"""
+        try:
+            self.log_to_gui("AutoVideoProducer starting...")
+            
+            # Load configuration
+            if not self.load_config():
+                self.log_to_gui("Failed to load configuration")
+                return False
+            self.log_to_gui("Configuration loaded successfully")
+            
+            # Setup Ollama
+            if not self.setup_ollama():
+                self.log_to_gui("Failed to setup Ollama")
+                return False
+            self.log_to_gui("Ollama setup completed")
+            
+            # Create GUI
+            if not self.create_gui():
+                self.log_to_gui("Failed to create GUI")
+                return False
+            self.log_to_gui("GUI created successfully")
+            
+            self.update_status("Ready", "green")
+            self.log_to_gui("AutoVideoProducer initialized successfully!")
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error during initialization: {e}")
+            self.log_to_gui(f"Initialization error: {e}")
+            return False
+            
+    def run(self):
+        """Run the application"""
+        try:
+            if self.initialize():
+                self.root.mainloop()
+            else:
+                messagebox.showerror("Error", "Failed to initialize AutoVideoProducer")
+        except Exception as e:
+            self.logger.error(f"Error running application: {e}")
+            messagebox.showerror("Error", f"Application error: {e}")
+
+def main():
+    """Main entry point"""
+    try:
+        app = AutoVideoProducer()
+        app.run()
+    except Exception as e:
+        print(f"Fatal error: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
